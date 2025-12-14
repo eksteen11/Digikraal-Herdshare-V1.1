@@ -1,9 +1,18 @@
 import Airtable from "airtable";
 
-// Initialize Airtable client
-const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY,
-}).base(process.env.AIRTABLE_BASE_ID!);
+// Lazy initialization of Airtable client (only when needed at runtime)
+function getAirtableBase() {
+  const apiKey = process.env.AIRTABLE_API_KEY;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+
+  if (!apiKey || !baseId) {
+    throw new Error("Airtable API key and Base ID are required. Please check your environment variables.");
+  }
+
+  return new Airtable({
+    apiKey: apiKey,
+  }).base(baseId);
+}
 
 const USERS_TABLE = process.env.AIRTABLE_TABLE_USERS || "Users";
 const TRANSACTIONS_TABLE = process.env.AIRTABLE_TABLE_TRANSACTIONS || "Data - Transactions";
@@ -33,6 +42,7 @@ export interface AirtableUser {
  */
 export async function getUserByEmail(email: string): Promise<AirtableUser | null> {
   try {
+    const base = getAirtableBase();
     const records = await base(USERS_TABLE)
       .select({
         filterByFormula: `{User Email} = "${email}"`,
@@ -57,6 +67,7 @@ export async function getUserByEmail(email: string): Promise<AirtableUser | null
  */
 export async function getUserById(id: string): Promise<AirtableUser | null> {
   try {
+    const base = getAirtableBase();
     const record = await base(USERS_TABLE).find(id);
     return {
       id: record.id,
@@ -73,6 +84,7 @@ export async function getUserById(id: string): Promise<AirtableUser | null> {
  */
 export async function createUser(fields: Partial<AirtableUser["fields"]>): Promise<AirtableUser> {
   try {
+    const base = getAirtableBase();
     const records = await base(USERS_TABLE).create([
       {
         fields: fields as any,
@@ -97,6 +109,7 @@ export async function updateUser(
   fields: Partial<AirtableUser["fields"]>
 ): Promise<AirtableUser> {
   try {
+    const base = getAirtableBase();
     const record = await base(USERS_TABLE).update(id, {
       ...fields,
     } as any);
@@ -199,6 +212,7 @@ export async function getTransactions(filters?: {
       formula = `AND(${conditions.join(", ")})`;
     }
 
+    const base = getAirtableBase();
     const records: AirtableTransaction[] = [];
     await base(TRANSACTIONS_TABLE)
       .select({
@@ -229,6 +243,7 @@ export async function getTransactionByItemNumber(
   itemNumber: string
 ): Promise<AirtableTransaction | null> {
   try {
+    const base = getAirtableBase();
     const records = await base(TRANSACTIONS_TABLE)
       .select({
         filterByFormula: `{Item #} = "${itemNumber}"`,
@@ -255,6 +270,7 @@ export async function createTransaction(
   fields: Partial<AirtableTransaction["fields"]>
 ): Promise<AirtableTransaction> {
   try {
+    const base = getAirtableBase();
     const records = await base(TRANSACTIONS_TABLE).create([
       {
         fields: fields as any,
@@ -279,6 +295,7 @@ export async function updateTransaction(
   fields: Partial<AirtableTransaction["fields"]>
 ): Promise<AirtableTransaction> {
   try {
+    const base = getAirtableBase();
     const record = await base(TRANSACTIONS_TABLE).update(id, {
       ...fields,
     } as any);
